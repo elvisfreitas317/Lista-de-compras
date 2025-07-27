@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lista de Compras</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3498db"/>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/service-worker.js");
+      });
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: linear-gradient(to right, #f0f4f8, #d9e2ec);
+      color: #333;
+    }
+    h1 { color: #2c3e50; text-align: center; font-size: 1.6em; }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      width: 100%;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background-color: #2980b9; }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .table-container { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-width: 600px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th { background-color: #ecf0f1; }
+    tr.checked {
+      text-decoration: line-through;
+      color: gray;
+      background-color: #f0f0f0;
+    }
+    .total {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.2em;
+      text-align: right;
+    }
+    @media (min-width: 600px) {
+      .input-group {
+        flex-direction: row;
+        gap: 10px;
+      }
+      input[type="text"], input[type="number"] {
+        width: auto;
+        flex: 1;
+      }
+      button { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🛒 Lista de Compras</h1>
+  <div class="input-group">
+    <input id="itemName" placeholder="Nome do item" type="text"/>
+    <input id="itemQty" min="1" placeholder="Quantidade" type="number"/>
+    <button onclick="addItem()">Adicionar</button>
+  </div>
+  <input id="searchInput" onkeyup="filterItems()" placeholder="🔍 Pesquisar item..." type="text"/>
+  <div class="table-container">
+    <table id="shoppingTable">
+      <thead>
+        <tr>
+          <th>Peguei</th>
+          <th>Item</th>
+          <th>Quantidade</th>
+          <th>Valor Unitário (R$)</th>
+          <th>Total (R$)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="total">Total Geral: R$ <span id="totalValue">0.00</span></div>
+  <script>
+    function addItem() {
+      const name = document.getElementById('itemName').value.trim();
+      const qty = parseInt(document.getElementById('itemQty').value);
+      if (!name || isNaN(qty) || qty <= 0) {
+        alert("Por favor, preencha o nome e a quantidade corretamente.");
+        return;
+      }
+      const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
+      const row = table.insertRow();
+      const checkCell = row.insertCell(0);
+      const nameCell = row.insertCell(1);
+      const qtyCell = row.insertCell(2);
+      const valueCell = row.insertCell(3);
+      const totalCell = row.insertCell(4);
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.onchange = () => { row.classList.toggle('checked'); };
+      checkCell.appendChild(checkbox);
+      nameCell.textContent = name;
+      qtyCell.textContent = qty;
+      const valueInput = document.createElement('input');
+      valueInput.type = 'number';
+      valueInput.min = '0';
+      valueInput.step = '0.01';
+      valueInput.style.width = '100%';
+      valueInput.oninput = () => {
+        const unitValue = parseFloat(valueInput.value);
+        const total = isNaN(unitValue) ? 0 : unitValue * qty;
+        totalCell.textContent = total.toFixed(2);
+        updateTotal();
+      };
+      valueCell.appendChild(valueInput);
+      totalCell.textContent = '0.00';
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemQty').value = '';
+    }
+
+    function updateTotal() {
+      const rows = document.querySelectorAll('#shoppingTable tbody tr');
+      let total = 0;
+      rows.forEach(row => {
+        const totalCell = row.cells[4];
+        const value = parseFloat(totalCell.textContent);
+        if (!isNaN(value)) {
+          total += value;
+        }
+      });
+      document.getElementById('totalValue').textContent = total.toFixed(2);
+    }
+
+    function filterItems() {
+      const input = document.getElementById('searchInput');
+      const filter = input.value.toLowerCase();
+      const rows = document.querySelectorAll('#shoppingTable tbody tr');
+      rows.forEach(row => {
+        const itemName = row.cells[1].textContent.toLowerCase();
+        row.style.display = itemName.includes(filter) ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>
