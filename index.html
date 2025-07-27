@@ -140,6 +140,7 @@
       valueInput.step = '0.01';
       valueInput.style.width = '100%';
       valueInput.oninput = () => {
+        row.classList.add('checked');
         const unitValue = parseFloat(valueInput.value);
         const total = isNaN(unitValue) ? 0 : unitValue * qty;
         totalCell.textContent = total.toFixed(2);
