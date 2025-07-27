@@ -96,7 +96,6 @@
     <table id="shoppingTable">
       <thead>
         <tr>
-          <th>Peguei</th>
           <th>Item</th>
           <th>Quantidade</th>
           <th>Valor Unitário (R$)</th>
@@ -119,18 +118,6 @@
       }
       const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
       const row = table.insertRow();
-      const checkCell = row.insertCell(0);
-      const nameCell = row.insertCell(1);
-      const qtyCell = row.insertCell(2);
-      const valueCell = row.insertCell(3);
-      const totalCell = row.insertCell(4);
-      const actionsCell = row.insertCell(5);
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.onchange = () => row.classList.toggle('checked');
-      checkCell.appendChild(checkbox);
-
       nameCell.textContent = name;
       qtyCell.textContent = qty;
 
@@ -213,7 +200,7 @@
       doc.setFontSize(12);
       const rows = document.querySelectorAll('#shoppingTable tbody tr');
       rows.forEach((row, index) => {
-        const peguei = row.classList.contains('checked') ? "✔️" : "";
+        const peguei = "";
         const item = row.cells[1].textContent;
         const qtd = row.cells[2].textContent;
         const valor = row.cells[3].querySelector('input')?.value || '0.00';
