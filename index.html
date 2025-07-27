@@ -58,11 +58,6 @@
       text-align: left;
     }
     th { background-color: #ecf0f1; }
-    tr.checked {
-      text-decoration: line-through;
-      color: gray;
-      background-color: #f0f0f0;
-    }
     .total {
       margin-top: 20px;
       font-weight: bold;
@@ -109,6 +104,7 @@
   <div class="total">Total Geral: R$ <span id="totalValue">0.00</span></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    
     function addItem() {
       const name = document.getElementById('itemName').value.trim();
       const qty = parseInt(document.getElementById('itemQty').value);
@@ -116,6 +112,55 @@
         alert("Por favor, preencha o nome e a quantidade corretamente.");
         return;
       }
+
+      const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
+      const row = table.insertRow();
+
+      const nameCell = row.insertCell();
+      const qtyCell = row.insertCell();
+      const valueCell = row.insertCell();
+      const totalCell = row.insertCell();
+      const actionsCell = row.insertCell();
+
+      nameCell.textContent = name;
+      qtyCell.textContent = qty;
+
+      const valueInput = document.createElement('input');
+      valueInput.type = 'number';
+      valueInput.min = '0';
+      valueInput.step = '0.01';
+      valueInput.style.width = '100%';
+      valueInput.oninput = () => {
+        const unitValue = parseFloat(valueInput.value);
+        const total = isNaN(unitValue) ? 0 : unitValue * qty;
+        totalCell.textContent = total.toFixed(2);
+        updateTotal();
+      };
+      valueCell.appendChild(valueInput);
+      totalCell.textContent = '0.00';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.onclick = () => {
+        row.remove();
+        updateTotal();
+      };
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.onclick = () => {
+        document.getElementById('itemName').value = nameCell.textContent;
+        document.getElementById('itemQty').value = qtyCell.textContent;
+        row.remove();
+        updateTotal();
+      };
+
+      actionsCell.appendChild(editBtn);
+      actionsCell.appendChild(deleteBtn);
+
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemQty').value = '';
+    }
       const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
       const row = table.insertRow();
       nameCell.textContent = name;
