@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Lista de Compras com Comparação</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f4f8;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    input, button, select {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    .list-container {
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛒 Lista de Compras com Comparações</h1>
+
+  <div class="section">
+    <h2>Criar Nova Lista</h2>
+    <input type="text" id="nomeLista" placeholder="Nome da lista (ex: Carrefour Julho)">
+    <input type="date" id="dataLista">
+    <div id="itensContainer"></div>
+    <button onclick="adicionarItem()">+ Adicionar Item</button>
+    <button onclick="salvarLista()">💾 Salvar Lista</button>
+  </div>
+
+  <div class="section">
+    <h2>Listas Salvas</h2>
+    <div id="historicoListas"></div>
+  </div>
+
+  <div class="section">
+    <h2>Comparar Listas</h2>
+    <select id="lista1Select"></select>
+    <select id="lista2Select"></select>
+    <button onclick="compararListas()">🔍 Comparar</button>
+    <div id="resultadoComparacao"></div>
+  </div>
+
+  <script>
+    let db;
+
+    const request = indexedDB.open("comprasDB", 1);
+    request.onupgradeneeded = event => {
+      db = event.target.result;
+      db.createObjectStore("listas", { keyPath: "id", autoIncrement: true });
+    };
+    request.onsuccess = event => {
+      db = event.target.result;
+      carregarListas();
+    };
+
+    function adicionarItem() {
+      const container = document.getElementById("itensContainer");
+      const div = document.createElement("div");
+      div.innerHTML = \`
+        <input type="text" placeholder="Produto">
+        <input type="number" placeholder="Quantidade" min="1" step="1">
+        <input type="number" placeholder="Valor Unitário (R$)" min="0" step="0.01">
+      \`;
+      container.appendChild(div);
+    }
+
+    function salvarLista() {
+      const nome = document.getElementById("nomeLista").value.trim();
+      const data = document.getElementById("dataLista").value;
+      const itemDivs = document.querySelectorAll("#itensContainer div");
+      if (!nome || !data || itemDivs.length === 0) {
+        alert("Preencha o nome, data e adicione pelo menos um item.");
+        return;
+      }
+
+      const itens = [];
+      itemDivs.forEach(div => {
+        const inputs = div.querySelectorAll("input");
+        const produto = inputs[0].value.trim();
+        const quantidade = parseInt(inputs[1].value);
+        const valorUnitario = parseFloat(inputs[2].value);
+        if (produto && !isNaN(quantidade) && !isNaN(valorUnitario)) {
+          itens.push({ produto, quantidade, valorUnitario });
+        }
+      });
+
+      const lista = { nome, data, itens };
+      const tx = db.transaction("listas", "readwrite");
+      tx.objectStore("listas").add(lista);
+      tx.oncomplete = () => {
+        document.getElementById("nomeLista").value = "";
+        document.getElementById("dataLista").value = "";
+        document.getElementById("itensContainer").innerHTML = "";
+        carregarListas();
+      };
+    }
+
+    function carregarListas() {
+      const tx = db.transaction("listas", "readonly");
+      const store = tx.objectStore("listas");
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const listas = request.result;
+        const historico = document.getElementById("historicoListas");
+        const select1 = document.getElementById("lista1Select");
+        const select2 = document.getElementById("lista2Select");
+        historico.innerHTML = "";
+        select1.innerHTML = "";
+        select2.innerHTML = "";
+
+        listas.forEach(lista => {
+          const total = lista.itens.reduce((sum, i) => sum + i.quantidade * i.valorUnitario, 0);
+          const div = document.createElement("div");
+          div.className = "list-container";
+          div.innerHTML = \`
+            <strong>\${lista.nome}</strong> - \${lista.data}<br>
+            Total: R$ \${total.toFixed(2)}
+          \`;
+          historico.appendChild(div);
+
+          const opt1 = new Option(lista.nome, lista.id);
+          const opt2 = new Option(lista.nome, lista.id);
+          select1.appendChild(opt1);
+          select2.appendChild(opt2);
+        });
+      };
+    }
+
+    function compararListas() {
+      const id1 = parseInt(document.getElementById("lista1Select").value);
+      const id2 = parseInt(document.getElementById("lista2Select").value);
+      if (id1 === id2) {
+        alert("Escolha duas listas diferentes.");
+        return;
+      }
+
+      const tx = db.transaction("listas", "readonly");
+      const store = tx.objectStore("listas");
+      const req1 = store.get(id1);
+      const req2 = store.get(id2);
+
+      tx.oncomplete = () => {
+        const lista1 = req1.result;
+        const lista2 = req2.result;
+        const comparacao = {};
+        lista1.itens.forEach(i => {
+          comparacao[i.produto] = { lista1: i.valorUnitario, lista2: null };
+        });
+        lista2.itens.forEach(i => {
+          if (!comparacao[i.produto]) comparacao[i.produto] = { lista1: null };
+          comparacao[i.produto].lista2 = i.valorUnitario;
+        });
+
+        let html = "<table><tr><th>Produto</th><th>Lista 1 (R$)</th><th>Lista 2 (R$)</th></tr>";
+        for (const prod in comparacao) {
+          const l1 = comparacao[prod].lista1 ?? "-";
+          const l2 = comparacao[prod].lista2 ?? "-";
+          html += \`<tr><td>\${prod}</td><td>\${l1}</td><td>\${l2}</td></tr>\`;
+        }
+        html += "</table>";
+        document.getElementById("resultadoComparacao").innerHTML = html;
+      };
+    }
+  </script>
+</body>
+</html>
