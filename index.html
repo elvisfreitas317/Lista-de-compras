@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -59,11 +58,6 @@
       text-align: left;
     }
     th { background-color: #ecf0f1; }
-    tr.checked {
-      text-decoration: line-through;
-      color: gray;
-      background-color: #f0f0f0;
-    }
     .total {
       margin-top: 20px;
       font-weight: bold;
@@ -89,24 +83,28 @@
     <input id="itemName" placeholder="Nome do item" type="text"/>
     <input id="itemQty" min="1" placeholder="Quantidade" type="number"/>
     <button onclick="addItem()">Adicionar</button>
+    <button onclick="clearList()">🗑️ Limpar Lista</button>
+    <button onclick="generatePDF()">📄 Exportar PDF</button>
   </div>
   <input id="searchInput" onkeyup="filterItems()" placeholder="🔍 Pesquisar item..." type="text"/>
   <div class="table-container">
     <table id="shoppingTable">
       <thead>
         <tr>
-          <th>Peguei</th>
           <th>Item</th>
           <th>Quantidade</th>
           <th>Valor Unitário (R$)</th>
           <th>Total (R$)</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
   <div class="total">Total Geral: R$ <span id="totalValue">0.00</span></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    
     function addItem() {
       const name = document.getElementById('itemName').value.trim();
       const qty = parseInt(document.getElementById('itemQty').value);
@@ -114,19 +112,19 @@
         alert("Por favor, preencha o nome e a quantidade corretamente.");
         return;
       }
+
       const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
       const row = table.insertRow();
-      const checkCell = row.insertCell(0);
-      const nameCell = row.insertCell(1);
-      const qtyCell = row.insertCell(2);
-      const valueCell = row.insertCell(3);
-      const totalCell = row.insertCell(4);
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.onchange = () => { row.classList.toggle('checked'); };
-      checkCell.appendChild(checkbox);
+
+      const nameCell = row.insertCell();
+      const qtyCell = row.insertCell();
+      const valueCell = row.insertCell();
+      const totalCell = row.insertCell();
+      const actionsCell = row.insertCell();
+
       nameCell.textContent = name;
       qtyCell.textContent = qty;
+
       const valueInput = document.createElement('input');
       valueInput.type = 'number';
       valueInput.min = '0';
@@ -140,6 +138,68 @@
       };
       valueCell.appendChild(valueInput);
       totalCell.textContent = '0.00';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.onclick = () => {
+        row.remove();
+        updateTotal();
+      };
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.onclick = () => {
+        document.getElementById('itemName').value = nameCell.textContent;
+        document.getElementById('itemQty').value = qtyCell.textContent;
+        row.remove();
+        updateTotal();
+      };
+
+      actionsCell.appendChild(editBtn);
+      actionsCell.appendChild(deleteBtn);
+
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemQty').value = '';
+    }
+      const table = document.getElementById('shoppingTable').getElementsByTagName('tbody')[0];
+      const row = table.insertRow();
+      nameCell.textContent = name;
+      qtyCell.textContent = qty;
+
+      const valueInput = document.createElement('input');
+      valueInput.type = 'number';
+      valueInput.min = '0';
+      valueInput.step = '0.01';
+      valueInput.style.width = '100%';
+      valueInput.oninput = () => {
+        row.classList.add('checked');
+        const unitValue = parseFloat(valueInput.value);
+        const total = isNaN(unitValue) ? 0 : unitValue * qty;
+        totalCell.textContent = total.toFixed(2);
+        updateTotal();
+      };
+      valueCell.appendChild(valueInput);
+      totalCell.textContent = '0.00';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.onclick = () => {
+        row.remove();
+        updateTotal();
+      };
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.onclick = () => {
+        document.getElementById('itemName').value = nameCell.textContent;
+        document.getElementById('itemQty').value = qtyCell.textContent;
+        row.remove();
+        updateTotal();
+      };
+
+      actionsCell.appendChild(editBtn);
+      actionsCell.appendChild(deleteBtn);
+
       document.getElementById('itemName').value = '';
       document.getElementById('itemQty').value = '';
     }
@@ -165,6 +225,42 @@
         const itemName = row.cells[1].textContent.toLowerCase();
         row.style.display = itemName.includes(filter) ? '' : 'none';
       });
+    }
+
+    function clearList() {
+      const confirmed = confirm("Tem certeza que deseja limpar toda a lista?");
+      if (confirmed) {
+        const tbody = document.querySelector('#shoppingTable tbody');
+        tbody.innerHTML = '';
+        updateTotal();
+      }
+    }
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Lista de Compras", 14, 15);
+      let y = 30;
+      doc.setFontSize(12);
+      const rows = document.querySelectorAll('#shoppingTable tbody tr');
+      rows.forEach((row, index) => {
+        const peguei = "";
+        const item = row.cells[1].textContent;
+        const qtd = row.cells[2].textContent;
+        const valor = row.cells[3].querySelector('input')?.value || '0.00';
+        const total = row.cells[4].textContent;
+        doc.text(`${peguei} ${item} - Qtde: ${qtd} - R$: ${valor} - Total: R$ ${total}`, 10, y);
+        y += 10;
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+      const totalGeral = document.getElementById('totalValue').textContent;
+      doc.setFontSize(14);
+      doc.text(`Total Geral: R$ ${totalGeral}`, 10, y + 10);
+      doc.save("lista_de_compras.pdf");
     }
   </script>
 </body>
